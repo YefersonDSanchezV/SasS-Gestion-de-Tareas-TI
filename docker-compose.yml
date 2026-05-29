@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: icvc-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./backend/.env
+    environment:
+      - ALLOWED_ORIGINS=http://localhost:5173
+      - TZ=America/Bogota
+
+    networks:
+      - icvc-network
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: icvc-worker
+    command: ["python", "-m", "app.workers.email_worker"]
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./backend/.env
+    environment:
+      - TZ=America/Bogota
+
+    depends_on:
+      - backend
+    networks:
+      - icvc-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: icvc-frontend
+    ports:
+      - "5172:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - ./frontend/.env
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - TZ=America/Bogota
+
+    depends_on:
+      - backend
+    networks:
+      - icvc-network
+
+networks:
+  icvc-network:
+    driver: bridge
