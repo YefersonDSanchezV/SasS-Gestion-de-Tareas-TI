@@ -15,7 +15,9 @@ export interface User {
   role: UserRole;
   rolNombre: string;
   status: 'active' | 'inactive';
-
+  accessibleModules: string[];
+  // { "Directorio de Usuarios": ["Consultar", "Agregar"], ... }
+  permisosDetalle: Record<string, string[]>;
   createdAt: string;
 }
 

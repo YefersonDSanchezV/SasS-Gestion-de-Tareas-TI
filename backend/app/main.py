@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
-from .api import auth, test, cases, users, dashboard, notifications, logs, roles, database
+from .api import auth, test, cases, users, dashboard, notifications, logs, roles, database, reports, permissions
 
 
 from .db.database import engine, Base
@@ -53,5 +53,6 @@ app.include_router(notifications.router)
 app.include_router(logs.router)
 app.include_router(roles.router)
 app.include_router(database.router)
-
+app.include_router(reports.router)
+app.include_router(permissions.router)
 

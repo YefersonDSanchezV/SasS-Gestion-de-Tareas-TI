@@ -12,6 +12,7 @@ import { CaseDetail } from './pages/CaseDetail';
 import { Logs } from './pages/Logs';
 import Roles from './pages/Settings/Roles';
 import Themes from './pages/Settings/Themes';
+import Permissions from './pages/Permissions';
 import CaseReports from './pages/Reports/CaseReports';
 import UserReports from './pages/Reports/UserReports';
 import SqlConsole from './pages/Reports/SqlConsole';
@@ -45,10 +46,11 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  // ── CASOS ─────────────────────────────────────────────────────────────────
   {
     path: '/cases',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedModule="Gestión de Casos">
         <Layout>
           <Cases />
         </Layout>
@@ -58,17 +60,18 @@ export const router = createBrowserRouter([
   {
     path: '/cases/:id',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedModule="Gestión de Casos">
         <Layout>
           <CaseDetail />
         </Layout>
       </ProtectedRoute>
     ),
   },
+  // ── USUARIOS ──────────────────────────────────────────────────────────────
   {
     path: '/users',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Directorio de Usuarios">
         <Layout>
           <Users mode="list" />
         </Layout>
@@ -78,7 +81,7 @@ export const router = createBrowserRouter([
   {
     path: '/users/requests',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Solicitudes de Acceso">
         <Layout>
           <Users mode="requests" />
         </Layout>
@@ -88,18 +91,17 @@ export const router = createBrowserRouter([
   {
     path: '/users/blocked',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Acceso Denegado">
         <Layout>
           <Users mode="blocked" />
         </Layout>
       </ProtectedRoute>
     ),
   },
-
   {
     path: '/users/new',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Directorio de Usuarios">
         <Layout>
           <UserForm />
         </Layout>
@@ -109,7 +111,7 @@ export const router = createBrowserRouter([
   {
     path: '/users/:id',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Directorio de Usuarios">
         <Layout>
           <UserDetail />
         </Layout>
@@ -119,27 +121,29 @@ export const router = createBrowserRouter([
   {
     path: '/users/:id/edit',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Directorio de Usuarios">
         <Layout>
           <UserForm />
         </Layout>
       </ProtectedRoute>
     ),
   },
+  // ── LOGS ──────────────────────────────────────────────────────────────────
   {
     path: '/logs',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Logs del Sistema">
         <Layout>
           <Logs />
         </Layout>
       </ProtectedRoute>
     ),
   },
+  // ── CONFIGURACIONES ───────────────────────────────────────────────────────
   {
     path: '/settings/roles',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Gestión de Roles">
         <Layout>
           <Roles />
         </Layout>
@@ -147,19 +151,31 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/settings/permissions',
+    element: (
+      <ProtectedRoute allowedModule="Gestión de Permisos">
+        <Layout>
+          <Permissions />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: '/settings/theme',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      // Tema disponible para todos por defecto
+      <ProtectedRoute>
         <Layout>
           <Themes />
         </Layout>
       </ProtectedRoute>
     ),
   },
+  // ── REPORTES ──────────────────────────────────────────────────────────────
   {
     path: '/reports/cases',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Reportes de Casos">
         <Layout>
           <CaseReports />
         </Layout>
@@ -169,7 +185,7 @@ export const router = createBrowserRouter([
   {
     path: '/reports/users',
     element: (
-      <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+      <ProtectedRoute allowedModule="Reportes de Usuarios">
         <Layout>
           <UserReports />
         </Layout>

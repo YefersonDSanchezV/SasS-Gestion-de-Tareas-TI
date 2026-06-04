@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List, Dict
 from uuid import UUID
 from datetime import datetime
 
@@ -36,8 +36,8 @@ class UserResponse(UserBase):
     rol_nombre: Optional[str] = None
     estado: str
     created_at: datetime
-
-
+    modulos_accesibles: Optional[List[str]] = []
+    permisos_detalle: Optional[Dict[str, List[str]]] = {}
 
     class Config:
         from_attributes = True
@@ -48,4 +48,3 @@ class RolResponse(BaseModel):
 
     class Config:
         from_attributes = True
-

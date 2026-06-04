@@ -101,6 +101,17 @@ export function Users({ mode = 'list' }: UsersProps) {
     navigate('/users/new', { state: { prefilled: request } });
   };
 
+  const handleResetPassword = async (id: string) => {
+    if (confirm("¿Estás seguro de que deseas restablecer la contraseña de este usuario a su número de documento?")) {
+      try {
+        await usersApi.resetPassword(id);
+        toast.success("Contraseña restablecida correctamente al número de documento");
+      } catch (error) {
+        toast.error("Error al restablecer la contraseña");
+      }
+    }
+  };
+
 
   const getRoleName = (rolId: number | null) => {
     const role = roles.find(r => r.id === rolId);
@@ -225,6 +236,9 @@ export function Users({ mode = 'list' }: UsersProps) {
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => navigate(`/users/${u.id}/edit`)} className="text-slate-600 border-slate-200 hover:bg-slate-50 rounded-lg">
                             <RefreshCw size={16} className="mr-2" /> Editar
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleResetPassword(u.id)} className="text-amber-600 border-amber-200 hover:bg-amber-50 rounded-lg" title="Restablecer contraseña">
+                            <IdCard size={16} />
                           </Button>
                         </TableCell>
                       </TableRow>

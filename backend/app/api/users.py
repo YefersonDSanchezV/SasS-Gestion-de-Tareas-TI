@@ -38,8 +38,38 @@ def request_access(user_in: UserCreateRequest, db: Session = Depends(get_db)):
 
 # 2. OBTENER MI PERFIL
 @router.get("/me", response_model=UserResponse)
-def get_me(user = Depends(get_current_user)):
+def get_me(user = Depends(get_current_user), db: Session = Depends(get_db)):
     user.rol_nombre = user.rol.nombre if user.rol else None
+
+    user.modulos_accesibles = []
+    user.permisos_detalle = {}
+
+    if user.rol_id:
+        from ..models.models import RolModuloPermiso, Modulo
+        permisos_rol = db.query(RolModuloPermiso).filter(
+            RolModuloPermiso.rol_id == user.rol_id
+        ).all()
+
+        modulos = set()
+        permisos_dict = {}
+
+        for p in permisos_rol:
+            modulo = db.query(Modulo).filter(Modulo.id == p.modulo_id).first()
+            if modulo:
+                modulos.add(modulo.nombre)
+                # Si tiene parent, agregar la carpeta padre también
+                if modulo.parent_id:
+                    parent = db.query(Modulo).filter(Modulo.id == modulo.parent_id).first()
+                    if parent:
+                        modulos.add(parent.nombre)
+                if modulo.nombre not in permisos_dict:
+                    permisos_dict[modulo.nombre] = []
+                if p.permiso and p.permiso.nombre not in permisos_dict[modulo.nombre]:
+                    permisos_dict[modulo.nombre].append(p.permiso.nombre)
+
+        user.modulos_accesibles = list(modulos)
+        user.permisos_detalle = permisos_dict
+
     return user
 
 # 3. LISTAR USUARIOS (Solo admin y coordinador)
@@ -113,10 +143,8 @@ def update_user(
     db.commit()
     db.refresh(db_user)
 
-    # Log de actualización
     registrar_log(db, user.id, "USUARIOS", "Usuario Actualizado", f"Se actualizó la información de {db_user.primer_nombre} {db_user.primer_apellido}")
     
-    # Log de cambio de estado
     if old_estado != db_user.estado:
         accion = "Usuario Activado" if db_user.estado == "ACTIVO" else "Usuario Inactivado"
         registrar_log(db, user.id, "USUARIOS", accion, f"El estado del usuario {db_user.primer_nombre} cambió de {old_estado} a {db_user.estado}")
@@ -162,7 +190,6 @@ def create_user_admin(
     from ..services.log_service import registrar_log
     from ..models.models import UsuarioBloqueado
 
-    # Validaciones solicitadas
     if db.query(Usuario).filter(Usuario.numero_identificacion == user_in.numero_identificacion).first():
         raise HTTPException(status_code=400, detail="Usuario con numero de identificacion ya existe")
     
@@ -171,8 +198,6 @@ def create_user_admin(
     
     if not user_in.celular.startswith("+57"):
         raise HTTPException(status_code=400, detail="Ingrese al codigo de telefono nacional correspondiente (+57)")
-
-    # El correo institucional SI se puede repetir (no se valida unicidad aquí)
 
     nuevo_usuario = Usuario(
         primer_nombre=user_in.primer_nombre,
@@ -192,7 +217,6 @@ def create_user_admin(
     
     db.add(nuevo_usuario)
 
-    # Si el usuario estaba bloqueado, lo eliminamos de la lista de bloqueados
     blocked = db.query(UsuarioBloqueado).filter(UsuarioBloqueado.numero_identificacion == user_in.numero_identificacion).first()
     if blocked:
         db.delete(blocked)
@@ -204,4 +228,24 @@ def create_user_admin(
 
     return nuevo_usuario
 
-
+# 10. RESTABLECER CONTRASEÑA AL NÚMERO DE DOCUMENTO
+@router.post("/{user_id}/reset-password")
+def reset_password(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user = Depends(require_roles(1,2))
+):
+    from ..services.log_service import registrar_log
+    db_user = db.query(Usuario).filter(Usuario.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    if not db_user.numero_identificacion:
+        raise HTTPException(status_code=400, detail="El usuario no tiene número de identificación")
+        
+    db_user.password_hash = get_password_hash(db_user.numero_identificacion)
+    db.commit()
+    
+    registrar_log(db, user.id, "USUARIOS", "Contraseña Restablecida", f"Se restableció la contraseña de {db_user.primer_nombre} {db_user.primer_apellido}")
+    
+    return {"message": "Contraseña restablecida exitosamente al número de documento"}

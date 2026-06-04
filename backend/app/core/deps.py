@@ -4,7 +4,7 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
-from app.models.models import Usuario
+from app.models.models import Usuario, RolModuloPermiso, Modulo, Permiso
 
 import os
 from dotenv import load_dotenv
@@ -48,7 +48,7 @@ def get_current_user(
     return user
 
 
-# 🔒 CONTROL POR ROLES
+# 🔒 CONTROL POR ROLES (legacy - se mantiene para compatibilidad)
 def require_roles(*roles_ids):
     def role_checker(user: Usuario = Depends(get_current_user)):
         if user.rol_id not in roles_ids:
@@ -59,3 +59,56 @@ def require_roles(*roles_ids):
         return user
 
     return role_checker
+
+
+# 🔒 CONTROL POR PERMISO DINÁMICO (nuevo)
+def require_permission(modulo_nombre: str, accion: str = None):
+    """
+    Valida que el usuario tenga acceso al módulo indicado.
+    Opcionalmente valida una acción específica (Agregar, Eliminar, etc.)
+    Los administradores (rol_id=1) siempre tienen acceso total.
+    """
+    def permission_checker(
+        user: Usuario = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ):
+        # Admin siempre tiene acceso completo
+        if user.rol_id == 1:
+            return user
+
+        if not user.rol_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No tienes permisos para acceder al módulo '{modulo_nombre}'",
+            )
+
+        # Buscar el módulo por nombre
+        modulo = db.query(Modulo).filter(Modulo.nombre == modulo_nombre).first()
+        if not modulo:
+            # Si el módulo no existe en BD, solo admin puede acceder
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Módulo '{modulo_nombre}' no encontrado",
+            )
+
+        # Consultar si el rol tiene algún permiso sobre este módulo
+        query = db.query(RolModuloPermiso).filter(
+            RolModuloPermiso.rol_id == user.rol_id,
+            RolModuloPermiso.modulo_id == modulo.id,
+        )
+
+        if accion:
+            permiso = db.query(Permiso).filter(Permiso.nombre == accion).first()
+            if permiso:
+                query = query.filter(RolModuloPermiso.permiso_id == permiso.id)
+
+        tiene_permiso = query.first()
+        if not tiene_permiso:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No tienes permiso para acceder a '{modulo_nombre}'",
+            )
+
+        return user
+
+    return permission_checker

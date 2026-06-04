@@ -240,5 +240,34 @@ class UsuarioBloqueado(Base):
     fecha_bloqueo = Column(DateTime(timezone=True), server_default=func.now())
     motivo = Column(Text)
 
+class Modulo(Base):
+    __tablename__ = "modulos"
 
+    id = Column(Integer, primary_key=True)
+    codigo = Column(String(20), nullable=True)           # e.g. "USU", "CAS"
+    nombre = Column(String(100), unique=True, nullable=False)
+    descripcion = Column(Text)
+    parent_id = Column(Integer, ForeignKey("modulos.id"), nullable=True)
+    is_folder = Column(Boolean, default=False)           # True = carpeta, False = módulo hoja
+    orden = Column(Integer, default=0)
 
+    parent = relationship("Modulo", remote_side="Modulo.id", backref="children")
+
+class Permiso(Base):
+    __tablename__ = "permisos"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String(100), unique=True, nullable=False)
+    descripcion = Column(Text)
+
+class RolModuloPermiso(Base):
+    __tablename__ = "rol_modulo_permiso"
+
+    id = Column(Integer, primary_key=True)
+    rol_id = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"))
+    modulo_id = Column(Integer, ForeignKey("modulos.id", ondelete="CASCADE"))
+    permiso_id = Column(Integer, ForeignKey("permisos.id", ondelete="CASCADE"))
+
+    rol = relationship("Rol")
+    modulo = relationship("Modulo")
+    permiso = relationship("Permiso")

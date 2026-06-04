@@ -118,6 +118,10 @@ export const usersApi = {
     };
     const response = await api.post('/users/request-access', backendData);
     return response.data;
+  },
+  resetPassword: async (id: string) => {
+    const response = await api.post(`/users/${id}/reset-password`);
+    return response.data;
   }
 };
 

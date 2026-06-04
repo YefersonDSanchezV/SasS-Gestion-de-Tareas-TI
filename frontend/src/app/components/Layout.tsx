@@ -108,9 +108,20 @@ export function Layout({ children }: LayoutProps) {
 
 
 
-  const filteredMenuItems = menuItems.filter(item =>
-    item.roles.includes(user?.role || '')
-  );
+  const filteredMenuItems = menuItems.filter(item => {
+    // Si el usuario es admin, por ahora le damos acceso a todo (o usar su lista si la tiene completa)
+    if (user?.role === 'admin') return true;
+    
+    // Si no es admin, filtramos basado en la lista dinámica de módulos accesibles
+    if (user?.accessibleModules) {
+      // El dashboard lo dejamos abierto a todos por defecto
+      if (item.label === 'Dashboard') return true;
+      
+      return user.accessibleModules.includes(item.label);
+    }
+    
+    return false;
+  });
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

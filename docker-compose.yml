@@ -2,12 +2,15 @@ version: '3.8'
 
 services:
   backend:
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: icvc-backend
     ports:
-      - "8000:8000"
+      - "8100:8000"
     volumes:
       - ./backend:/app
     env_file:
