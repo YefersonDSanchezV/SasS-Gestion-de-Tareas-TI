@@ -8,34 +8,27 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/permissions", tags=["Permisos"])
 
-# Acciones disponibles en el sistema (equivalente a columnas en la imagen)
-ACCIONES_SISTEMA = [
-    "Agregar", "Modificar", "Grabar", "Consultar",
-    "Eliminar", "Imprimir", "Confirmar", "Procesar",
-    "Ejecutar", "Anular", "Exportar"
-]
+# El único permiso relevante es "Acceder" — controla si un rol puede ingresar al módulo
+ACCIONES_SISTEMA = ["Acceder"]
 
-# Estructura jerárquica de módulos del sistema
+# Estructura jerárquica que refleja EXACTAMENTE el menú lateral del sistema
 MODULOS_SISTEMA = [
+    {
+        "codigo": "CAS",
+        "nombre": "Gestión de Casos",
+        "is_folder": False,
+        "orden": 1,
+        "children": []
+    },
     {
         "codigo": "USU",
         "nombre": "Usuarios",
         "is_folder": True,
-        "orden": 1,
-        "children": [
-            {"codigo": "USU1", "nombre": "Directorio de Usuarios", "orden": 1},
-            {"codigo": "USU2", "nombre": "Solicitudes de Acceso", "orden": 2},
-            {"codigo": "USU3", "nombre": "Acceso Denegado", "orden": 3},
-        ]
-    },
-    {
-        "codigo": "CAS",
-        "nombre": "Casos",
-        "is_folder": True,
         "orden": 2,
         "children": [
-            {"codigo": "CAS1", "nombre": "Gestión de Casos", "orden": 1},
-            {"codigo": "CAS2", "nombre": "Detalle de Caso", "orden": 2},
+            {"codigo": "USU1", "nombre": "Directorio de Usuarios", "orden": 1},
+            {"codigo": "USU2", "nombre": "Solicitudes de Acceso",  "orden": 2},
+            {"codigo": "USU3", "nombre": "Acceso Denegado",        "orden": 3},
         ]
     },
     {
@@ -44,9 +37,9 @@ MODULOS_SISTEMA = [
         "is_folder": True,
         "orden": 3,
         "children": [
-            {"codigo": "REP1", "nombre": "Reportes de Casos", "orden": 1},
+            {"codigo": "REP1", "nombre": "Reportes de Casos",    "orden": 1},
             {"codigo": "REP2", "nombre": "Reportes de Usuarios", "orden": 2},
-            {"codigo": "REP3", "nombre": "Consultas SQL", "orden": 3},
+            {"codigo": "REP3", "nombre": "Consultas SQL",        "orden": 3},
         ]
     },
     {
@@ -62,22 +55,21 @@ MODULOS_SISTEMA = [
         "is_folder": True,
         "orden": 5,
         "children": [
-            {"codigo": "CFG1", "nombre": "Gestión de Roles", "orden": 1},
+            {"codigo": "CFG1", "nombre": "Gestión de Roles",    "orden": 1},
             {"codigo": "CFG2", "nombre": "Gestión de Permisos", "orden": 2},
-            {"codigo": "CFG3", "nombre": "Temas y Apariencia", "orden": 3},
+            {"codigo": "CFG3", "nombre": "Temas y Apariencia",  "orden": 3},
         ]
     },
 ]
 
+
 def seed_modulos_and_permisos(db: Session):
     """Inserta la estructura inicial de módulos y permisos si no existe."""
-    # Seed permisos (acciones)
     if db.query(Permiso).count() == 0:
         for accion in ACCIONES_SISTEMA:
             db.add(Permiso(nombre=accion))
         db.commit()
 
-    # Seed módulos jerárquicos
     if db.query(Modulo).count() == 0:
         for mod_data in MODULOS_SISTEMA:
             carpeta = Modulo(
@@ -88,7 +80,7 @@ def seed_modulos_and_permisos(db: Session):
                 parent_id=None
             )
             db.add(carpeta)
-            db.flush()  # Para obtener el ID
+            db.flush()
 
             for child_data in mod_data.get("children", []):
                 hijo = Modulo(
@@ -103,14 +95,16 @@ def seed_modulos_and_permisos(db: Session):
 
 
 class PermisoAsignar(BaseModel):
+    """
+    El frontend envía solo los módulos marcados (carpeta o hijo individual).
+    El backend se encarga de expandir la carpeta a sus hijos automáticamente.
+    """
     modulo_id: int
-    permiso_id: int
 
 
 @router.get("/seed")
 def trigger_seed(db: Session = Depends(get_db), user=Depends(require_roles(1))):
     """Fuerza la re-creación del seed de módulos y permisos."""
-    # Borrar todo y re-crear
     db.query(RolModuloPermiso).delete()
     db.query(Modulo).delete()
     db.query(Permiso).delete()
@@ -121,20 +115,31 @@ def trigger_seed(db: Session = Depends(get_db), user=Depends(require_roles(1))):
 
 @router.get("/modulos")
 def get_modulos(db: Session = Depends(get_db)):
+    """Devuelve todos los módulos ordenados para construir la matriz."""
     seed_modulos_and_permisos(db)
-    # Retorna todos los módulos en orden jerárquico
-    modulos = db.query(Modulo).order_by(Modulo.orden).all()
-    return [
-        {
-            "id": m.id,
-            "codigo": m.codigo,
-            "nombre": m.nombre,
-            "is_folder": m.is_folder,
-            "parent_id": m.parent_id,
-            "orden": m.orden,
-        }
-        for m in modulos
-    ]
+    # Primero los padres (parent_id=None), luego los hijos, cada grupo por orden
+    padres = db.query(Modulo).filter(Modulo.parent_id == None).order_by(Modulo.orden).all()
+    result = []
+    for padre in padres:
+        result.append({
+            "id": padre.id,
+            "codigo": padre.codigo,
+            "nombre": padre.nombre,
+            "is_folder": padre.is_folder,
+            "parent_id": padre.parent_id,
+            "orden": padre.orden,
+        })
+        hijos = db.query(Modulo).filter(Modulo.parent_id == padre.id).order_by(Modulo.orden).all()
+        for hijo in hijos:
+            result.append({
+                "id": hijo.id,
+                "codigo": hijo.codigo,
+                "nombre": hijo.nombre,
+                "is_folder": hijo.is_folder,
+                "parent_id": hijo.parent_id,
+                "orden": hijo.orden,
+            })
+    return result
 
 
 @router.get("/tipos")
@@ -146,6 +151,9 @@ def get_tipos_permiso(db: Session = Depends(get_db)):
 
 @router.get("/roles/{rol_id}")
 def get_permisos_rol(rol_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """
+    Devuelve los IDs de módulos a los que el rol tiene acceso.
+    """
     seed_modulos_and_permisos(db)
     permisos = db.query(RolModuloPermiso).filter(RolModuloPermiso.rol_id == rol_id).all()
     return [
@@ -162,52 +170,69 @@ def get_permisos_rol(rol_id: int, db: Session = Depends(get_db), user=Depends(ge
 @router.post("/roles/{rol_id}")
 def update_permisos_rol(
     rol_id: int,
-    permisos_in: List[PermisoAsignar],
+    modulos_in: List[PermisoAsignar],
     db: Session = Depends(get_db),
     user=Depends(require_roles(1))
 ):
-    # Remove existing permissions for the role
+    """
+    Guarda los permisos de acceso de un rol.
+
+    Reglas de cascada:
+      - Carpeta marcada  → acceso a la CARPETA + TODOS sus hijos.
+      - Hijo marcado     → acceso solo a ese HIJO + la CARPETA padre (para navegación).
+    """
+    # Limpiar permisos existentes del rol
     db.query(RolModuloPermiso).filter(RolModuloPermiso.rol_id == rol_id).delete()
     db.commit()
 
-    # Helper to collect all ancestor module ids for a given set of module ids
-    def get_ancestor_ids(module_ids: set[int]) -> set[int]:
-        ancestors = set()
-        for mid in module_ids:
-            modulo = db.query(Modulo).filter(Modulo.id == mid).first()
-            while modulo and modulo.parent_id:
-                ancestors.add(modulo.parent_id)
-                modulo = db.query(Modulo).filter(Modulo.id == modulo.parent_id).first()
-        return ancestors
+    # Obtener el permiso "Acceder"
+    perm_acceder = db.query(Permiso).filter(Permiso.nombre == "Acceder").first()
+    if not perm_acceder:
+        raise HTTPException(
+            status_code=500,
+            detail="Permiso 'Acceder' no encontrado. Ejecute /permissions/seed"
+        )
 
-    assigned_module_ids = {p.modulo_id for p in permisos_in}
-    # Include their ancestor (parent) modules
-    all_module_ids = assigned_module_ids.union(get_ancestor_ids(assigned_module_ids))
+    modulos_a_guardar: set = set()
 
-    # Determine default permission (Consultar) or fallback to first
-    default_perm = db.query(Permiso).filter(Permiso.nombre == "Consultar").first()
-    if not default_perm:
-        default_perm = db.query(Permiso).first()
+    for item in modulos_in:
+        modulo = db.query(Modulo).filter(Modulo.id == item.modulo_id).first()
+        if not modulo:
+            continue
 
-    # Insert permissions for each module (including parents)
-    for mod_id in all_module_ids:
-        # Find specific permission for this module if provided
-        specific = next((p for p in permisos_in if p.modulo_id == mod_id), None)
-        permiso_id = specific.permiso_id if specific else default_perm.id
-        # Avoid duplicate primary key errors
-        existing = db.query(RolModuloPermiso).filter(
+        if modulo.is_folder:
+            # Carpeta seleccionada: acceso a la carpeta + todos sus submódulos
+            modulos_a_guardar.add(modulo.id)
+            hijos = db.query(Modulo).filter(Modulo.parent_id == modulo.id).all()
+            for hijo in hijos:
+                modulos_a_guardar.add(hijo.id)
+        else:
+            # Submódulo seleccionado: acceso al hijo + carpeta padre para navegación
+            modulos_a_guardar.add(modulo.id)
+            if modulo.parent_id:
+                modulos_a_guardar.add(modulo.parent_id)
+
+    # Insertar registros de acceso únicos
+    for mod_id in modulos_a_guardar:
+        existe = db.query(RolModuloPermiso).filter(
             RolModuloPermiso.rol_id == rol_id,
             RolModuloPermiso.modulo_id == mod_id,
-            RolModuloPermiso.permiso_id == permiso_id
+            RolModuloPermiso.permiso_id == perm_acceder.id
         ).first()
-        if not existing:
-            db.add(RolModuloPermiso(rol_id=rol_id, modulo_id=mod_id, permiso_id=permiso_id))
+        if not existe:
+            db.add(RolModuloPermiso(
+                rol_id=rol_id,
+                modulo_id=mod_id,
+                permiso_id=perm_acceder.id
+            ))
     db.commit()
+
+    return {"message": f"Permisos guardados. Total módulos con acceso: {len(modulos_a_guardar)}"}
 
 
 @router.get("/mis-permisos")
 def get_mis_permisos(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    """Devuelve los permisos del usuario actual organizados por módulo."""
+    """Devuelve los módulos accesibles del usuario actual."""
     if not user.rol_id:
         return {}
 

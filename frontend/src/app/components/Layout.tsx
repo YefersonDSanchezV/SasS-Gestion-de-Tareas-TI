@@ -62,66 +62,83 @@ export function Layout({ children }: LayoutProps) {
     {
       icon: Ticket,
       label: 'Casos',
+      moduleName: 'Gestión de Casos',
       path: '/cases',
       roles: ['admin', 'coordinator', 'technician'],
     },
     {
       icon: Users,
       label: 'Usuarios',
+      moduleName: 'Usuarios',
       path: '/users',
       roles: ['admin', 'coordinator'],
       subItems: [
-        { label: 'Directorio', path: '/users', icon: Users },
-        { label: 'Solicitudes', path: '/users/requests', icon: UserPlus },
-        { label: 'Acceso Denegado', path: '/users/blocked', icon: UserX },
+        { label: 'Directorio', moduleName: 'Directorio de Usuarios', path: '/users', icon: Users },
+        { label: 'Solicitudes', moduleName: 'Solicitudes de Acceso', path: '/users/requests', icon: UserPlus },
+        { label: 'Acceso Denegado', moduleName: 'Acceso Denegado', path: '/users/blocked', icon: UserX },
       ]
     },
     {
       icon: BarChart3,
       label: 'Reportes',
+      moduleName: 'Reportes',
       path: '/reports',
       roles: ['admin', 'coordinator'],
       subItems: [
-        { label: 'Reportes de Casos', path: '/reports/cases', icon: FileText },
-        { label: 'Reportes de Usuarios', path: '/reports/users', icon: Users },
-        { label: 'Consultas PostgreSQL', path: '/reports/sql', icon: Database },
+        { label: 'Reportes de Casos', moduleName: 'Reportes de Casos', path: '/reports/cases', icon: FileText },
+        { label: 'Reportes de Usuarios', moduleName: 'Reportes de Usuarios', path: '/reports/users', icon: Users },
+        { label: 'Consultas PostgreSQL', moduleName: 'Consultas SQL', path: '/reports/sql', icon: Database },
       ]
     },
     {
       icon: ScrollText,
       label: 'Logs',
+      moduleName: 'Logs del Sistema',
       path: '/logs',
       roles: ['admin', 'coordinator'],
     },
     {
       icon: Settings,
       label: 'Configuraciones',
+      moduleName: 'Configuraciones',
       path: '/settings',
       roles: ['admin', 'coordinator'],
       subItems: [
-        { label: 'Roles', path: '/settings/roles', icon: Shield },
-        { label: 'Permisos', path: '/settings/permissions', icon: Key },
-        { label: 'Tema', path: '/settings/theme', icon: Palette },
+        { label: 'Roles', moduleName: 'Gestión de Roles', path: '/settings/roles', icon: Shield },
+        { label: 'Permisos', moduleName: 'Gestión de Permisos', path: '/settings/permissions', icon: Key },
+        { label: 'Tema', moduleName: 'Temas y Apariencia', path: '/settings/theme', icon: Palette },
       ]
     },
   ];
 
 
 
-  const filteredMenuItems = menuItems.filter(item => {
+  const filteredMenuItems = menuItems.map(item => {
     // Si el usuario es admin, por ahora le damos acceso a todo (o usar su lista si la tiene completa)
-    if (user?.role === 'admin') return true;
+    if (user?.role === 'admin') return item;
     
     // Si no es admin, filtramos basado en la lista dinámica de módulos accesibles
     if (user?.accessibleModules) {
       // El dashboard lo dejamos abierto a todos por defecto
-      if (item.label === 'Dashboard') return true;
+      if (item.label === 'Dashboard') return item;
       
-      return user.accessibleModules.includes(item.label);
+      const isParentAccessible = user.accessibleModules.includes(item.moduleName || item.label);
+      
+      if (item.subItems) {
+        const filteredSub = item.subItems.filter(sub => user.accessibleModules?.includes(sub.moduleName || sub.label));
+        // Show parent if any child is accessible OR parent is explicitly accessible
+        if (filteredSub.length > 0 || isParentAccessible) {
+          return { ...item, subItems: filteredSub };
+        }
+        return null;
+      } else {
+        if (isParentAccessible) return item;
+        return null;
+      }
     }
     
-    return false;
-  });
+    return null;
+  }).filter(Boolean) as typeof menuItems;
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

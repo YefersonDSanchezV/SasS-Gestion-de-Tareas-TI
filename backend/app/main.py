@@ -13,9 +13,9 @@ from .models import models
 # Crear tablas si no existen
 try:
     Base.metadata.create_all(bind=engine)
-    print("✅ Tablas verificadas/creadas correctamente")
+    print("Tablas verificadas/creadas correctamente")
 except Exception as e:
-    print(f"❌ Error al crear tablas: {e}")
+    print(f"Error al crear tablas: {e}")
 
 
 app = FastAPI(

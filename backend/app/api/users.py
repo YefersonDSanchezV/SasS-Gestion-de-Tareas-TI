@@ -57,11 +57,6 @@ def get_me(user = Depends(get_current_user), db: Session = Depends(get_db)):
             modulo = db.query(Modulo).filter(Modulo.id == p.modulo_id).first()
             if modulo:
                 modulos.add(modulo.nombre)
-                # Si tiene parent, agregar la carpeta padre también
-                if modulo.parent_id:
-                    parent = db.query(Modulo).filter(Modulo.id == modulo.parent_id).first()
-                    if parent:
-                        modulos.add(parent.nombre)
                 if modulo.nombre not in permisos_dict:
                     permisos_dict[modulo.nombre] = []
                 if p.permiso and p.permiso.nombre not in permisos_dict[modulo.nombre]:
@@ -71,6 +66,7 @@ def get_me(user = Depends(get_current_user), db: Session = Depends(get_db)):
         user.permisos_detalle = permisos_dict
 
     return user
+
 
 # 3. LISTAR USUARIOS (Solo admin y coordinador)
 @router.get("/", response_model=List[UserResponse])
