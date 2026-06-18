@@ -43,6 +43,10 @@ app.add_middleware(
 def read_root():
     return {"Mensage": "Bienvenido al API de Gestion de Tareas por asignacion de correo institucional de ICVC. v1.0.0 --> " + datetime.now().isoformat()}
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
 app.include_router(auth.router)
 
 app.include_router(test.router)
