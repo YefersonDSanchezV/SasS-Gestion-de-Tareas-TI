@@ -13,14 +13,15 @@ async def run_worker():
         try:
             await procesar_correos(db)
             print("✅ Correos procesados")
-        except Exception as e:
-            print("❌ Error:", e)
         finally:
             db.close()
+
+        except Exception as e:
+            print("❌ Error worker:", e)
 
         await asyncio.sleep(30)
 
 
 # 🔥 ESTO ES LO QUE TE FALTABA
 if __name__ == "__main__":
-    asyncio.run(run_worker())
+    asyncio.run(run_worker())

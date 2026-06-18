@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: sass-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      TZ: America/Bogota
+    expose:
+      - "8000"
+    networks:
+      - sass-network
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: sass-worker
+    restart: unless-stopped
+    command: python -m app.workers.email_worker
+    env_file:
+      - ./backend/.env
+    environment:
+      TZ: America/Bogota
+    depends_on:
+      - backend
+    networks:
+      - sass-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: sass-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    networks:
+      - sass-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: sass-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - sass-network
+
+networks:
+  sass-network:
+    driver: bridge
