@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.dependencies import get_db
-from app.api.auth import get_current_user
+from app.core.deps import require_permission
 from pydantic import BaseModel
 from typing import List, Dict, Any
 
@@ -15,12 +15,8 @@ class QueryRequest(BaseModel):
 def execute_query(
     request: QueryRequest,
     db: Session = Depends(get_db),
-    current_user: Any = Depends(get_current_user)
+    current_user: Any = Depends(require_permission("Consultas SQL"))
 ):
-    # Solo administradores pueden ejecutar consultas SQL directas
-    if current_user.rol_id != 1: # Asumiendo que 1 es Administrador
-        raise HTTPException(status_code=403, detail="No tienes permisos para ejecutar consultas SQL")
-
     # Validaciones básicas de seguridad (muy limitadas, idealmente usaríamos un usuario de BD de solo lectura)
     # Por ahora permitiremos todo pero con precaución.
     
@@ -53,12 +49,8 @@ def execute_query(
 @router.get("/dictionary")
 def get_dictionary(
     db: Session = Depends(get_db),
-    current_user: Any = Depends(get_current_user)
+    current_user: Any = Depends(require_permission("Consultas SQL"))
 ):
-    # Solo administradores pueden ver el diccionario
-    if current_user.rol_id != 1:
-        raise HTTPException(status_code=403, detail="No tienes permisos para ver el diccionario de datos")
-
     try:
         print("🔍 Consultando esquema de base de datos (multi-schema)...")
         # Consulta que busca en esquemas no-sistema

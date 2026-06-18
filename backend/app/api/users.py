@@ -4,7 +4,7 @@ from typing import List
 import uuid
 
 from ..db.dependencies import get_db
-from ..core.deps import get_current_user, require_roles
+from ..core.deps import get_current_user, require_permission, require_roles
 from ..models.models import Usuario, Rol
 from ..schemas.user import UserCreateRequest, UserResponse, UserUpdate, RolResponse
 from ..core.security import get_password_hash
@@ -72,7 +72,7 @@ def get_me(user = Depends(get_current_user), db: Session = Depends(get_db)):
 @router.get("/", response_model=List[UserResponse])
 def get_users(
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1,2)) # admin y coordinador
+    user = Depends(require_permission("Directorio de Usuarios"))
 ):
     usuarios = db.query(Usuario).all()
     for u in usuarios:
@@ -84,7 +84,7 @@ def get_users(
 def get_user(
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1,2))
+    user = Depends(require_permission("Directorio de Usuarios"))
 ):
     db_user = db.query(Usuario).filter(Usuario.id == user_id).first()
     if not db_user:
@@ -124,7 +124,7 @@ def update_user(
     user_id: uuid.UUID,
     user_in: UserUpdate,
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1,2))
+    user = Depends(require_permission("Directorio de Usuarios"))
 ):
     from ..services.log_service import registrar_log
     db_user = db.query(Usuario).filter(Usuario.id == user_id).first()
@@ -151,7 +151,7 @@ def update_user(
 @router.get("/roles/all", response_model=List[RolResponse])
 def get_roles(
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1,2))
+    user = Depends(require_permission("Directorio de Usuarios"))
 ):
     return db.query(Rol).all()
 
@@ -229,7 +229,7 @@ def create_user_admin(
 def reset_password(
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1,2))
+    user = Depends(require_permission("Directorio de Usuarios"))
 ):
     from ..services.log_service import registrar_log
     db_user = db.query(Usuario).filter(Usuario.id == user_id).first()

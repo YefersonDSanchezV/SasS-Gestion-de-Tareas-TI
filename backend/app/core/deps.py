@@ -111,4 +111,47 @@ def require_permission(modulo_nombre: str, accion: str = None):
 
         return user
 
-    return permission_checker
+    return permission_checker
+
+
+def require_any_permission(*modulos_nombres: str):
+    """
+    Valida que el usuario tenga acceso a cualquiera de los módulos indicados.
+    Los administradores (rol_id=1) siempre tienen acceso total.
+    """
+    def permission_checker(
+        user: Usuario = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ):
+        if user.rol_id == 1:
+            return user
+
+        if not user.rol_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para acceder a este recurso",
+            )
+
+        modulos = db.query(Modulo).filter(Modulo.nombre.in_(modulos_nombres)).all()
+        modulo_ids = [modulo.id for modulo in modulos]
+
+        if not modulo_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Módulos de permisos no encontrados",
+            )
+
+        tiene_permiso = db.query(RolModuloPermiso).filter(
+            RolModuloPermiso.rol_id == user.rol_id,
+            RolModuloPermiso.modulo_id.in_(modulo_ids),
+        ).first()
+
+        if not tiene_permiso:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para acceder a este recurso",
+            )
+
+        return user
+
+    return permission_checker

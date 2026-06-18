@@ -39,21 +39,30 @@ export function Users({ mode = 'list' }: UsersProps) {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [mode]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [usersData, rolesData, requestsData, blockedData] = await Promise.all([
+
+      if (mode === 'requests') {
+        const requestsData = await authApi.getRequests();
+        setRequests(Array.isArray(requestsData) ? requestsData : []);
+        return;
+      }
+
+      if (mode === 'blocked') {
+        const blockedData = await authApi.getBlocked();
+        setBlocked(Array.isArray(blockedData) ? blockedData : []);
+        return;
+      }
+
+      const [usersData, rolesData] = await Promise.all([
         usersApi.getAll(),
-        usersApi.getRoles(),
-        authApi.getRequests(),
-        authApi.getBlocked()
+        usersApi.getRoles()
       ]);
       setUsers(usersData);
       setRoles(rolesData);
-      setRequests(Array.isArray(requestsData) ? requestsData : []);
-      setBlocked(Array.isArray(blockedData) ? blockedData : []);
     } catch (error) {
       console.error("Error cargando datos:", error);
       toast.error("No se pudieron cargar los datos");

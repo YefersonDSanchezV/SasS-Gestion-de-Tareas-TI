@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from ..db.dependencies import get_db
-from ..core.deps import get_current_user, require_roles
+from ..core.deps import get_current_user, require_roles, require_permission
 from ..models.models import Modulo, Permiso, RolModuloPermiso, Rol
 from pydantic import BaseModel
 
@@ -150,7 +150,11 @@ def get_tipos_permiso(db: Session = Depends(get_db)):
 
 
 @router.get("/roles/{rol_id}")
-def get_permisos_rol(rol_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def get_permisos_rol(
+    rol_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("Gestión de Permisos"))
+):
     """
     Devuelve los IDs de módulos a los que el rol tiene acceso.
     """
@@ -172,7 +176,7 @@ def update_permisos_rol(
     rol_id: int,
     modulos_in: List[PermisoAsignar],
     db: Session = Depends(get_db),
-    user=Depends(require_roles(1))
+    user=Depends(require_permission("Gestión de Permisos"))
 ):
     """
     Guarda los permisos de acceso de un rol.

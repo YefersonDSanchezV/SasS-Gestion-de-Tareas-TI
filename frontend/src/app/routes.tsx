@@ -195,7 +195,7 @@ export const router = createBrowserRouter([
   {
     path: '/reports/sql',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedModule="Consultas SQL">
         <Layout>
           <SqlConsole />
         </Layout>

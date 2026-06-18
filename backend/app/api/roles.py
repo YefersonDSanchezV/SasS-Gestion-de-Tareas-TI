@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from ..db.dependencies import get_db
-from ..core.deps import get_current_user, require_roles
+from ..core.deps import require_permission, require_any_permission
 from ..models.models import Rol
 from pydantic import BaseModel
 from datetime import datetime
@@ -27,7 +27,7 @@ class RolResponse(RolBase):
 @router.get("/", response_model=List[RolResponse])
 def get_roles(
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1)) # Solo admin
+    user = Depends(require_any_permission("Gestión de Roles", "Gestión de Permisos"))
 ):
     return db.query(Rol).all()
 
@@ -35,7 +35,7 @@ def get_roles(
 def create_rol(
     rol_in: RolCreate,
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1))
+    user = Depends(require_permission("Gestión de Roles"))
 ):
     if db.query(Rol).filter(Rol.nombre == rol_in.nombre).first():
         raise HTTPException(status_code=400, detail="El nombre del rol ya existe")
@@ -55,7 +55,7 @@ def update_rol(
     rol_id: int,
     rol_in: RolCreate,
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1))
+    user = Depends(require_permission("Gestión de Roles"))
 ):
     db_rol = db.query(Rol).filter(Rol.id == rol_id).first()
     if not db_rol:

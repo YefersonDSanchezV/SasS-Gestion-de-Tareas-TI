@@ -8,7 +8,7 @@ from ..schemas.auth import SolicitudAccesoCreate
 from ..services.log_service import registrar_log
 from ..services.notification_service import notificar_administradores
 from ..models.models import Usuario, SolicitudAcceso, UsuarioBloqueado
-from ..core.deps import get_current_user
+from ..core.deps import get_current_user, require_permission
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -77,23 +77,16 @@ def request_access(
 @router.get("/requests")
 def get_pending_requests(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("Solicitudes de Acceso"))
 ):
-    # Solo admin y coordinador
-    if not current_user.rol or current_user.rol.nombre.upper() not in ["ADMINISTRADOR", "COORDINADOR DE SISTEMAS"]:
-        raise HTTPException(status_code=403, detail="No tiene permisos")
-        
     return db.query(SolicitudAcceso).filter(SolicitudAcceso.estado == "PENDIENTE").all()
 
 @router.post("/requests/{id}/deny")
 def deny_request(
     id: str,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("Solicitudes de Acceso"))
 ):
-    if not current_user.rol or current_user.rol.nombre.upper() not in ["ADMINISTRADOR", "COORDINADOR DE SISTEMAS"]:
-        raise HTTPException(status_code=403, detail="No tiene permisos")
-
     solicitud = db.query(SolicitudAcceso).filter(SolicitudAcceso.id == id).first()
     if not solicitud:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
@@ -124,22 +117,16 @@ def deny_request(
 @router.get("/blocked")
 def get_blocked_users(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("Acceso Denegado"))
 ):
-    if not current_user.rol or current_user.rol.nombre.upper() not in ["ADMINISTRADOR", "COORDINADOR DE SISTEMAS"]:
-        raise HTTPException(status_code=403, detail="No tiene permisos")
-
     return db.query(UsuarioBloqueado).all()
 
 @router.delete("/blocked/{id}")
 def unblock_user(
     id: str,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("Acceso Denegado"))
 ):
-    if not current_user.rol or current_user.rol.nombre.upper() not in ["ADMINISTRADOR", "COORDINADOR DE SISTEMAS"]:
-        raise HTTPException(status_code=403, detail="No tiene permisos")
-
     blocked = db.query(UsuarioBloqueado).filter(UsuarioBloqueado.id == id).first()
     if not blocked:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -150,4 +137,4 @@ def unblock_user(
     registrar_log(db, current_user.id, "USUARIOS", "Usuario Desbloqueado", f"Se desbloqueó el acceso a {blocked.primer_nombre} {blocked.primer_apellido}")
     
     return {"message": "Usuario desbloqueado"}
-
+

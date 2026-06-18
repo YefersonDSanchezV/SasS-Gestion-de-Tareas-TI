@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
 from ..db.dependencies import get_db
 from ..models.models import Log, Usuario
-from ..core.deps import get_current_user
+from ..core.deps import get_current_user, require_permission
 
 router = APIRouter(prefix="/logs", tags=["Logs"])
 
@@ -10,12 +10,8 @@ router = APIRouter(prefix="/logs", tags=["Logs"])
 def get_logs(
     modulo: str = None,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(require_permission("Logs del Sistema"))
 ):
-    if not current_user.rol or current_user.rol.nombre.upper() not in ["ADMINISTRADOR", "COORDINADOR DE SISTEMAS"]:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="No tiene permisos")
-
 
     query = db.query(Log).options(joinedload(Log.usuario))
     
