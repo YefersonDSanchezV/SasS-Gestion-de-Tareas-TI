@@ -13,11 +13,10 @@ async def run_worker():
         try:
             await procesar_correos(db)
             print("✅ Correos procesados")
-        finally:
-            db.close()
-
         except Exception as e:
             print("❌ Error worker:", e)
+        finally:
+            db.close()
 
         await asyncio.sleep(30)
 
