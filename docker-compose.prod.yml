@@ -45,7 +45,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: sass-frontend
     restart: unless-stopped
-    expose:
+    ports:
       - "5172:80"
     depends_on:
       - backend
