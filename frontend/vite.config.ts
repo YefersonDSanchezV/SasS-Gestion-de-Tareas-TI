@@ -42,7 +42,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: process.env.BACKEND_URL || 'http://localhost:8000',
+        target: process.env.BACKEND_URL || '/api',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''), // Quita el prefijo /api antes de enviar al backend
       },
