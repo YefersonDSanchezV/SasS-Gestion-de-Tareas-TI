@@ -98,7 +98,7 @@ def approve_user(
     user_id: uuid.UUID,
     rol_id: int, # Al aprobar hay que asignarle un rol
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1)) # Solo admin (rol 1)
+    user = Depends(require_permission("Solicitudes de Acceso"))
 ):
     from ..services.log_service import registrar_log
     db_user = db.query(Usuario).filter(Usuario.id == user_id).first()
@@ -160,7 +160,7 @@ def get_roles(
 def delete_user(
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1))
+    user = Depends(require_permission("Directorio de Usuarios"))
 ):
     from ..services.log_service import registrar_log
     db_user = db.query(Usuario).filter(Usuario.id == user_id).first()
@@ -181,7 +181,7 @@ def create_user_admin(
     user_in: UserCreateRequest, 
     rol_id: int,
     db: Session = Depends(get_db),
-    user = Depends(require_roles(1))
+    user = Depends(require_permission("Directorio de Usuarios"))
 ):
     from ..services.log_service import registrar_log
     from ..models.models import UsuarioBloqueado
